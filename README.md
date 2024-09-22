@@ -22,7 +22,7 @@ If you need a VPS, you can purchase one from providers like [PQ Hosting](https:/
 
 3. When prompted, enter the number of wallets you want to create. The script will generate the wallets and create a separate service for each one.
 
-4. The details of each wallet will be saved in a file named `wallets_info.json`. Please copy all the wallet details from this file and save them in a secure place.
+4. The details of each wallet will be saved in separate files named popm-address-X.json (where X is the wallet number). Please copy all the wallet details from these files and save them in a secure place.
 
 ## PoP Mining Logs
 
