@@ -17,7 +17,7 @@ If you need a VPS, you can purchase one from providers like [PQ Hosting](https:/
 2. Run the following command to download and execute the script:
 
    ```bash
-   [ -f "hemixyz.sh" ] && rm hemixyz.sh; wget -q https://raw.githubusercontent.com/0xlimon/pop-mining/refs/heads/main/hemixyz.sh && chmod +x hemixyz.sh && ./hemixyz.sh
+   [ -f "hemixyz.sh" ] && rm hemixyz.sh; wget -q https://raw.githubusercontent.com/0xlimon/pop-multi-mining/refs/heads/main/hemixyz.sh && chmod +x hemixyz.sh && ./hemixyz.sh
    ```
 
 3. When prompted, enter the number of wallets you want to create. The script will generate the wallets and create a separate service for each one.
