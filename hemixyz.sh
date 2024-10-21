@@ -32,8 +32,8 @@ show_menu() {
     echo "3) View existing wallets"
     echo "4) Restart all services"
     echo "5) Update Hemi Network"
-    echo "6) Remove All Services"
-    echo "7) Update Fee for All Miners"
+    echo "6) Update Fee for All Miners"
+    echo "7) Remove All Services"
     echo "8) Exit"
     echo
     read -p "Please select an option (1-8): " choice
@@ -363,8 +363,8 @@ main() {
             3) view_existing_wallets ;;
             4) restart_all_services ;;
             5) update_hemi_network ;;
-            6) remove_all_services ;;
-            7) update_fee_for_all_miners ;;
+            6) update_fee_for_all_miners ;;
+            7) remove_all_services ;;
             8) show "Exiting..."; exit 0 ;;
             *) show "Invalid option. Please try again." ;;
         esac
