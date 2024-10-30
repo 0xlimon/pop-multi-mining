@@ -43,32 +43,55 @@ create_new_wallets() {
     read -p "How many wallets do you want to create? " wallet_count
     echo
 
-    for (( i=1; i<=$wallet_count; i++ )); do
-        show "Creating wallet $i..."
-        ./keygen -secp256k1 -json -net="testnet" > ~/popm-address-$i.json
-        if [ $? -ne 0 ]; then
-            show "Failed to generate wallet $i."
+    if ! [[ "$wallet_count" =~ ^[0-9]+$ ]]; then
+        show "Invalid input. Please enter a valid number."
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    highest_num=0
+    for service in $(systemctl list-units --type=service | grep hemi- | awk '{print $1}'); do
+        num=$(echo $service | grep -o '[0-9]\+' | head -1)
+        if [ -n "$num" ] && [ "$num" -gt "$highest_num" ]; then
+            highest_num=$num
+        fi
+    done
+
+    start_num=$((highest_num + 1))
+
+    for (( i=0; i<$wallet_count; i++ )); do
+        current_num=$((start_num + i))
+        show "Creating wallet $((i+1)) (Service #$current_num)..."
+        
+        if ! ./keygen -secp256k1 -json -net="testnet" > ~/popm-address-$current_num.json; then
+            show "Failed to generate wallet $((i+1))."
             continue
         fi
         
-        priv_key=$(jq -r '.private_key' ~/popm-address-$i.json)
-        pubkey_hash=$(jq -r '.pubkey_hash' ~/popm-address-$i.json)
+        priv_key=$(jq -r '.private_key' ~/popm-address-$current_num.json)
+        pubkey_hash=$(jq -r '.pubkey_hash' ~/popm-address-$current_num.json)
 
-        show "Wallet $i details:"
-        cat ~/popm-address-$i.json
+        show "Wallet $((i+1)) details:"
+        cat ~/popm-address-$current_num.json
         echo
         
         show "Join: https://discord.gg/hemixyz"
         show "Request faucet from faucet channel to this address: $pubkey_hash"
         echo
-        read -p "Have you requested faucet for wallet $i? (y/N): " faucet_requested
+        read -p "Have you requested faucet for wallet $((i+1))? (y/N): " faucet_requested
+        
         if [[ "$faucet_requested" =~ ^[Yy]$ ]]; then
-            read -p "Enter static fee for wallet $i (numerical only, recommended: 100-200): " static_fee
+            read -p "Enter static fee for wallet $((i+1)) (numerical only, recommended: 100-200): " static_fee
+            
+            if ! [[ "$static_fee" =~ ^[0-9]+$ ]]; then
+                show "Invalid fee. Please enter a numerical value. Skipping wallet $((i+1))."
+                continue
+            fi
             echo
 
-            sudo tee /etc/systemd/system/hemi-$i.service > /dev/null <<EOF
+            if ! sudo tee /etc/systemd/system/hemi-$current_num.service > /dev/null <<EOF
 [Unit]
-Description=Hemi Network popmd Service - Wallet $i
+Description=Hemi Network popmd Service - Wallet $current_num
 After=network.target
 
 [Service]
@@ -82,31 +105,91 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+            then
+                show "Failed to create service file for wallet $((i+1))"
+                continue
+            fi
 
-            sudo systemctl daemon-reload
-            sudo systemctl enable hemi-$i.service
-            sudo systemctl start hemi-$i.service
-            show "Service hemi-$i.service is successfully started for wallet $i"
+            if ! sudo systemctl daemon-reload; then
+                show "Failed to reload systemd for wallet $((i+1))"
+                continue
+            fi
+
+            if ! sudo systemctl enable hemi-$current_num.service; then
+                show "Failed to enable service for wallet $((i+1))"
+                continue
+            fi
+
+            if ! sudo systemctl start hemi-$current_num.service; then
+                show "Failed to start service for wallet $((i+1))"
+                continue
+            fi
+
+            show "Service hemi-$current_num.service is successfully started for wallet $((i+1))"
+            
+
+            if systemctl is-active --quiet hemi-$current_num.service; then
+                show "Service is running successfully"
+            else
+                show "Warning: Service may not be running properly"
+            fi
         else
-            show "Skipping service creation for wallet $i."
+            show "Skipping service creation for wallet $((i+1))."
         fi
         echo
     done
+    
+    show "Wallet creation process completed"
+    read -p "Press Enter to continue..."
 }
 
 import_existing_wallets() {
     read -p "How many wallets do you want to import? " wallet_count
     echo
 
-    for (( i=1; i<=$wallet_count; i++ )); do
-        show "Importing wallet $i..."
-        read -p "Enter private key for wallet $i: " priv_key
-        read -p "Enter static fee for wallet $i (numerical only, recommended: 100-200): " static_fee
+
+    if ! [[ "$wallet_count" =~ ^[0-9]+$ ]]; then
+        show "Invalid input. Please enter a valid number."
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+
+    highest_num=0
+    for service in $(systemctl list-units --type=service | grep hemi- | awk '{print $1}'); do
+        num=$(echo $service | grep -o '[0-9]\+' | head -1)
+        if [ -n "$num" ] && [ "$num" -gt "$highest_num" ]; then
+            highest_num=$num
+        fi
+    done
+
+
+    start_num=$((highest_num + 1))
+
+    for (( i=0; i<$wallet_count; i++ )); do
+        current_num=$((start_num + i))
+        show "Importing wallet $((i+1)) (Service #$current_num)..."
+        read -p "Enter private key for wallet $((i+1)): " priv_key
+        
+
+        if [ -z "$priv_key" ]; then
+            show "Private key cannot be empty. Skipping wallet $((i+1))."
+            continue
+        fi
+
+        read -p "Enter static fee for wallet $((i+1)) (numerical only, recommended: 100-200): " static_fee
+        
+
+        if ! [[ "$static_fee" =~ ^[0-9]+$ ]]; then
+            show "Invalid fee. Please enter a numerical value. Skipping wallet $((i+1))."
+            continue
+        fi
         echo
 
-        sudo tee /etc/systemd/system/hemi-$i.service > /dev/null <<EOF
+
+        if ! sudo tee /etc/systemd/system/hemi-$current_num.service > /dev/null <<EOF
 [Unit]
-Description=Hemi Network popmd Service - Wallet $i
+Description=Hemi Network popmd Service - Wallet $current_num
 After=network.target
 
 [Service]
@@ -120,13 +203,40 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+        then
+            show "Failed to create service file for wallet $((i+1))"
+            continue
+        fi
 
-        sudo systemctl daemon-reload
-        sudo systemctl enable hemi-$i.service
-        sudo systemctl start hemi-$i.service
-        show "Service hemi-$i.service is successfully started for wallet $i"
+
+        if ! sudo systemctl daemon-reload; then
+            show "Failed to reload systemd for wallet $((i+1))"
+            continue
+        fi
+
+        if ! sudo systemctl enable hemi-$current_num.service; then
+            show "Failed to enable service for wallet $((i+1))"
+            continue
+        fi
+
+        if ! sudo systemctl start hemi-$current_num.service; then
+            show "Failed to start service for wallet $((i+1))"
+            continue
+        fi
+
+        show "Service hemi-$current_num.service is successfully started for wallet $((i+1))"
+        
+
+        if systemctl is-active --quiet hemi-$current_num.service; then
+            show "Service is running successfully"
+        else
+            show "Warning: Service may not be running properly"
+        fi
         echo
     done
+    
+    show "Import process completed"
+    read -p "Press Enter to continue..."
 }
 
 view_existing_wallets() {
